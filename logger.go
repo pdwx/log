@@ -3,6 +3,7 @@ package log
 import (
 	"fmt"
 	"os"
+	"runtime"
 	"time"
 
 	"path"
@@ -15,6 +16,28 @@ import (
 )
 
 var log *logrus.Logger
+var enableCallFunc bool = true
+
+// These are the different logging levels. You can set the logging level to log
+// on your instance of logger, obtained with `logrus.New()`.
+const (
+	// PanicLevel level, highest level of severity. Logs and then calls panic with the
+	// message passed to Debug, Info, ...
+	PanicLevel logrus.Level = iota
+	// FatalLevel level. Logs and then calls `os.Exit(1)`. It will exit even if the
+	// logging level is set to Panic.
+	FatalLevel
+	// ErrorLevel level. Logs. Used for errors that should definitely be noted.
+	// Commonly used for hooks to send errors to an error tracking service.
+	ErrorLevel
+	// WarnLevel level. Non-critical entries that deserve eyes.
+	WarnLevel
+	// InfoLevel level. General operational entries about what's going on inside the
+	// application.
+	InfoLevel
+	// DebugLevel level. Usually only enabled when debugging. Very verbose logging.
+	DebugLevel
+)
 
 type FileLogConfig struct {
 	Filename string       `json:"filename"`
@@ -31,9 +54,8 @@ func init() {
 	log.Out = os.Stdout
 	log.Hooks = make(logrus.LevelHooks)
 	log.Level = logrus.DebugLevel
-	log.Formatter = &TextFormatter{
-		FullTimestamp: true,
-		FuncCallDepth: 6,
+	log.Formatter = &logrus.TextFormatter{
+		DisableColors: true,
 	}
 }
 
@@ -78,155 +100,178 @@ func SetLogLevel(level logrus.Level) {
 	log.Level = level
 }
 
-func WithField(key string, value interface{}) *logrus.Entry {
-	return logrus.NewEntry(log).WithField(key, value)
-}
-
-func WithFields(fields logrus.Fields) *logrus.Entry {
-	return logrus.NewEntry(log).WithFields(fields)
-}
-
-func WithError(err error) *logrus.Entry {
-	return logrus.NewEntry(log).WithError(err)
+func DisableCallFunc() {
+	enableCallFunc = false
 }
 
 func Debugf(format string, args ...interface{}) {
 	if log.Level >= logrus.DebugLevel {
-		logrus.NewEntry(log).Debugf(format, args...)
+		if enableCallFunc {
+			logrus.NewEntry(log).WithField("func", getFuncCall()).Debugf(format, args...)
+		} else {
+			logrus.NewEntry(log).Debugf(format, args...)
+		}
 	}
 }
 
 func Infof(format string, args ...interface{}) {
 	if log.Level >= logrus.InfoLevel {
-		logrus.NewEntry(log).Infof(format, args...)
+		if enableCallFunc {
+			logrus.NewEntry(log).WithField("func", getFuncCall()).Infof(format, args...)
+		} else {
+			logrus.NewEntry(log).Infof(format, args...)
+		}
 	}
 }
 
 func Printf(format string, args ...interface{}) {
-	logrus.NewEntry(log).Printf(format, args...)
+	if enableCallFunc {
+		logrus.NewEntry(log).WithField("func", getFuncCall()).Printf(format, args...)
+	} else {
+		logrus.NewEntry(log).Printf(format, args...)
+	}
 }
 
 func Warnf(format string, args ...interface{}) {
 	if log.Level >= logrus.WarnLevel {
-		logrus.NewEntry(log).Warnf(format, args...)
+		if enableCallFunc {
+			logrus.NewEntry(log).WithField("func", getFuncCall()).Warnf(format, args...)
+		} else {
+			logrus.NewEntry(log).Warnf(format, args...)
+		}
 	}
 }
 
 func Warningf(format string, args ...interface{}) {
 	if log.Level >= logrus.WarnLevel {
-		logrus.NewEntry(log).Warnf(format, args...)
+		if enableCallFunc {
+			logrus.NewEntry(log).WithField("func", getFuncCall()).Warnf(format, args...)
+		} else {
+			logrus.NewEntry(log).Warnf(format, args...)
+		}
 	}
 }
 
 func Errorf(format string, args ...interface{}) {
 	if log.Level >= logrus.ErrorLevel {
-		logrus.NewEntry(log).Errorf(format, args...)
+		if enableCallFunc {
+			logrus.NewEntry(log).WithField("func", getFuncCall()).Errorf(format, args...)
+		} else {
+			logrus.NewEntry(log).WithField("func", getFuncCall()).Errorf(format, args...)
+		}
 	}
 }
 
 func Fatalf(format string, args ...interface{}) {
 	if log.Level >= logrus.FatalLevel {
-		logrus.NewEntry(log).Fatalf(format, args...)
+		if enableCallFunc {
+			logrus.NewEntry(log).WithField("func", getFuncCall()).Fatalf(format, args...)
+		} else {
+			logrus.NewEntry(log).Fatalf(format, args...)
+		}
 	}
 	os.Exit(1)
 }
 
 func Panicf(format string, args ...interface{}) {
 	if log.Level >= logrus.PanicLevel {
-		logrus.NewEntry(log).Panicf(format, args...)
+		if enableCallFunc {
+			logrus.NewEntry(log).WithField("func", getFuncCall()).Panicf(format, args...)
+		} else {
+			logrus.NewEntry(log).Panicf(format, args...)
+		}
 	}
 }
 
-func Debug(args ...interface{}) {
-	if log.Level >= logrus.DebugLevel {
-		logrus.NewEntry(log).Debug(args...)
+type PackageLog struct {
+	Level logrus.Level
+}
+
+func (plog *PackageLog) Debugf(format string, args ...interface{}) {
+	if plog.Level >= logrus.DebugLevel {
+		if enableCallFunc {
+			logrus.NewEntry(log).WithField("func", getFuncCall()).Infof(format, args...)
+		} else {
+			logrus.NewEntry(log).Infof(format, args...)
+		}
 	}
 }
 
-func Info(args ...interface{}) {
-	if log.Level >= logrus.InfoLevel {
-		logrus.NewEntry(log).Info(args...)
+func (plog *PackageLog) Infof(format string, args ...interface{}) {
+	if plog.Level >= logrus.InfoLevel {
+		if enableCallFunc {
+			logrus.NewEntry(log).WithField("func", getFuncCall()).Infof(format, args...)
+		} else {
+			logrus.NewEntry(log).Infof(format, args...)
+		}
 	}
 }
 
-func Print(args ...interface{}) {
-	logrus.NewEntry(log).Info(args...)
-}
-
-func Warn(args ...interface{}) {
-	if log.Level >= logrus.WarnLevel {
-		logrus.NewEntry(log).Warn(args...)
+func (plog *PackageLog) Printf(format string, args ...interface{}) {
+	if enableCallFunc {
+		logrus.NewEntry(log).WithField("func", getFuncCall()).Printf(format, args...)
+	} else {
+		logrus.NewEntry(log).Printf(format, args...)
 	}
 }
 
-func Warning(args ...interface{}) {
-	if log.Level >= logrus.WarnLevel {
-		logrus.NewEntry(log).Warn(args...)
+func (plog *PackageLog) Warnf(format string, args ...interface{}) {
+	if plog.Level >= logrus.WarnLevel {
+		if enableCallFunc {
+			logrus.NewEntry(log).WithField("func", getFuncCall()).Warnf(format, args...)
+		} else {
+			logrus.NewEntry(log).Warnf(format, args...)
+		}
 	}
 }
 
-func Error(args ...interface{}) {
-	if log.Level >= logrus.ErrorLevel {
-		logrus.NewEntry(log).Error(args...)
+func (plog *PackageLog) Warningf(format string, args ...interface{}) {
+	if plog.Level >= logrus.WarnLevel {
+		if enableCallFunc {
+			logrus.NewEntry(log).WithField("func", getFuncCall()).Warnf(format, args...)
+		} else {
+			logrus.NewEntry(log).Warnf(format, args...)
+		}
 	}
 }
 
-func Fatal(args ...interface{}) {
-	if log.Level >= logrus.FatalLevel {
-		logrus.NewEntry(log).Fatal(args...)
-	}
-	os.Exit(1)
-}
-
-func Panic(args ...interface{}) {
-	if log.Level >= logrus.PanicLevel {
-		logrus.NewEntry(log).Panic(args...)
+func (plog *PackageLog) Errorf(format string, args ...interface{}) {
+	if plog.Level >= logrus.ErrorLevel {
+		if enableCallFunc {
+			logrus.NewEntry(log).WithField("func", getFuncCall()).Errorf(format, args...)
+		} else {
+			logrus.NewEntry(log).WithField("func", getFuncCall()).Errorf(format, args...)
+		}
 	}
 }
 
-func Debugln(args ...interface{}) {
-	if log.Level >= logrus.DebugLevel {
-		logrus.NewEntry(log).Debugln(args...)
-	}
-}
-
-func Infoln(args ...interface{}) {
-	if log.Level >= logrus.InfoLevel {
-		logrus.NewEntry(log).Infoln(args...)
-	}
-}
-
-func Println(args ...interface{}) {
-	logrus.NewEntry(log).Println(args...)
-}
-
-func Warnln(args ...interface{}) {
-	if log.Level >= logrus.WarnLevel {
-		logrus.NewEntry(log).Warnln(args...)
-	}
-}
-
-func Warningln(args ...interface{}) {
-	if log.Level >= logrus.WarnLevel {
-		logrus.NewEntry(log).Warnln(args...)
-	}
-}
-
-func Errorln(args ...interface{}) {
-	if log.Level >= logrus.ErrorLevel {
-		logrus.NewEntry(log).Errorln(args...)
-	}
-}
-
-func Fatalln(args ...interface{}) {
-	if log.Level >= logrus.FatalLevel {
-		logrus.NewEntry(log).Fatalln(args...)
+func (plog *PackageLog) Fatalf(format string, args ...interface{}) {
+	if plog.Level >= logrus.FatalLevel {
+		if enableCallFunc {
+			logrus.NewEntry(log).WithField("func", getFuncCall()).Fatalf(format, args...)
+		} else {
+			logrus.NewEntry(log).Fatalf(format, args...)
+		}
 	}
 	os.Exit(1)
 }
 
-func Panicln(args ...interface{}) {
-	if log.Level >= logrus.PanicLevel {
-		logrus.NewEntry(log).Panicln(args...)
+func (plog *PackageLog) Panicf(format string, args ...interface{}) {
+	if plog.Level >= logrus.PanicLevel {
+		if enableCallFunc {
+			logrus.NewEntry(log).WithField("func", getFuncCall()).Panicf(format, args...)
+		} else {
+			logrus.NewEntry(log).Panicf(format, args...)
+		}
 	}
+}
+
+func getFuncCall() string {
+	_, file, line, ok := runtime.Caller(2)
+	if !ok {
+		file = "???"
+		line = 0
+	}
+	_, filename := path.Split(file)
+	return fmt.Sprintf("%s:%d", filename, line)
 }
