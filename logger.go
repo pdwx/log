@@ -39,9 +39,9 @@ func init() {
 
 func DefaultFileLogConfig() *FileLogConfig {
 	flc := &FileLogConfig{}
-	os.Mkdir("log", 0777)
+	os.Mkdir("./log", 0777)
 	pname := path.Base(os.Args[0])
-	flc.Filename = fmt.Sprintf("/log/%s-%d-%s.log", pname, os.Getpid(), time.Now().Format("2013-01-02"))
+	flc.Filename = fmt.Sprintf("./log/%s-%d-%s.log", pname, os.Getpid(), time.Now().Format("2013-01-02"))
 	flc.MaxLines = math.MaxInt32
 	flc.MaxSize = 1024 * 1024 * 512 //512MB
 	flc.Daily = true
