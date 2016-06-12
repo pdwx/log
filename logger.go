@@ -30,10 +30,10 @@ func init() {
 	log = &logrus.Logger{}
 	log.Out = os.Stdout
 	log.Hooks = make(logrus.LevelHooks)
-	log.Level = logrus.InfoLevel
+	log.Level = logrus.DebugLevel
 	log.Formatter = &TextFormatter{
 		FullTimestamp: true,
-		FuncCallDepth: 4,
+		FuncCallDepth: 6,
 	}
 }
 
@@ -72,6 +72,10 @@ func AddHook(hook logrus.Hook) {
 
 func SetFormatter(formatter logrus.Formatter) {
 	log.Formatter = formatter
+}
+
+func SetLogLevel(level logrus.Level) {
+	log.Level = level
 }
 
 func WithField(key string, value interface{}) *logrus.Entry {
